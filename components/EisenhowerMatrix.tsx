@@ -22,27 +22,31 @@ const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onTaskClick 
 
       {/* Axis Labels */}
       <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-slate-400 font-mono tracking-widest z-0 origin-center">
-        IMPORTANCE 
+        IMPORTANCE (0-10)
       </div>
       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 font-mono tracking-widest z-0">
-        URGENCY 
+        URGENCY (0-10)
       </div>
 
       {/* Plot Area */}
       <div className="relative w-full h-full z-10 m-4">
         {activeTasks.map((task) => {
-          // Normalize 1-10 to percentage 0-100
+          // Normalize 0-10 to percentage 0-100
           // X-axis: Urgency (0 left, 10 right)
           // Y-axis: Importance (0 bottom, 10 top)
-          const left = ((task.urgency - 1) / 9) * 100;
-          const bottom = ((task.importance - 1) / 9) * 100;
+          const left = (task.urgency / 10) * 100;
+          const bottom = (task.importance / 10) * 100;
+
+          // Clamp values to stay inside the box slightly (avoid overflow)
+          const clampedLeft = Math.max(0, Math.min(95, left));
+          const clampedBottom = Math.max(0, Math.min(95, bottom));
 
           return (
             <div
               key={task.id}
               onClick={() => onTaskClick(task)}
               className="absolute transform -translate-x-1/2 translate-y-1/2 cursor-pointer group hover:z-50"
-              style={{ left: `${left}%`, bottom: `${bottom}%` }}
+              style={{ left: `${clampedLeft}%`, bottom: `${clampedBottom}%` }}
             >
               <div 
                 className={`
@@ -54,7 +58,7 @@ const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onTaskClick 
               />
               {/* Tooltip */}
               <div className="hidden group-hover:block absolute bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[150px] bg-slate-800 text-white text-[10px] p-2 rounded z-50 truncate">
-                {task.title}
+                {task.title} (I:{task.importance}, U:{task.urgency})
               </div>
             </div>
           );

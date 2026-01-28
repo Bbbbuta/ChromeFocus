@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "ChromeFocus 专注助手",
+  "version": "1.0",
+  "description": "智能90分钟周期与专注追踪仪表盘",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "action": {
+    "default_title": "Open ChromeFocus"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

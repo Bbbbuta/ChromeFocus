@@ -12,21 +12,26 @@ const getAiClient = () => {
 /**
  * Summarizes a list of simulated browser history items into a concise activity description.
  */
-export const summarizeActivity = async (historyItems: string[]): Promise<string> => {
+export const summarizeActivity = async (historyItems: string[], lang: 'en' | 'zh' = 'en'): Promise<string> => {
   const ai = getAiClient();
   if (!ai) {
-    return "API Key Missing: Cannot summarize.";
+    return lang === 'zh' ? "API密钥缺失：无法总结。" : "API Key Missing: Cannot summarize.";
   }
 
   if (historyItems.length === 0) {
-    return "No activity detected.";
+    return lang === 'zh' ? "未检测到活动。" : "No activity detected.";
   }
 
   try {
+    const languageInstruction = lang === 'zh' 
+      ? "Please provide the summary in Simplified Chinese (简体中文)." 
+      : "Please provide the summary in English.";
+
     const prompt = `
       You are an intelligent productivity assistant. 
       Analyze the following list of website titles and URLs visited by a user during a 90-minute work block.
       Summarize the user's primary focus or task into a single, professional sentence (max 15 words).
+      ${languageInstruction}
       
       Browser History:
       ${historyItems.map(item => `- ${item}`).join('\n')}
@@ -39,10 +44,10 @@ export const summarizeActivity = async (historyItems: string[]): Promise<string>
       contents: prompt,
     });
 
-    return response.text?.trim() || "Could not generate summary.";
+    return response.text?.trim() || (lang === 'zh' ? "无法生成总结。" : "Could not generate summary.");
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Error generating summary.";
+    return lang === 'zh' ? "生成总结时出错。" : "Error generating summary.";
   }
 };
 

@@ -6,7 +6,7 @@ import { translations, Language } from '../translations';
 
 const INITIAL_GROUPS: TaskGroup[] = [
   { id: 'g1', name: 'Work Projects', color: 'indigo' },
-  { id: 'g2', name: 'Personal', color: 'emerald' },
+  { id: 'g2', name: 'Personal', col任务列表or: 'emerald' },
   { id: 'g3', name: 'Learning', color: 'amber' },
 ];
 
@@ -51,26 +51,53 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
     };
     findChildren(id);
     setTasks(tasks.filter(t => !idsToDelete.has(t.id)));
+    if (editingTask === id) setEditingTask(null);
   };
 
-  const addTask = (parentId: string | null = null, groupId: string = selectedGroupId) => {
-    if (!newTaskTitle.trim()) return;
+  const addTask = (parentId: string | null = null, groupId: string = selectedGroupId, customTitle: string | null = null) => {
+    const titleToUse = customTitle !== null ? customTitle : newTaskTitle;
+    if (!titleToUse.trim()) return;
+
     const newTask: Task = {
       id: Date.now().toString(),
       parentId,
       groupId,
-      title: newTaskTitle,
+      title: titleToUse,
       completed: false,
-      importance: 5,
-      urgency: 5,
+      importance: 0, // Default 0
+      urgency: 0,    // Default 0
       createdAt: Date.now(),
     };
-    setTasks([...tasks, newTask]);
-    setNewTaskTitle('');
+    
+    setTasks(prev => [...prev, newTask]);
+    
+    if (customTitle === null) {
+        setNewTaskTitle('');
+    }
+    
+    return newTask.id;
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const handleTaskKeyDown = (e: React.KeyboardEvent, task: Task) => {
+      e.stopPropagation(); // Prevent bubbling to parent tasks
+
+      if (e.key === 'Delete') {
+          deleteTask(task.id);
+      } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.shiftKey) {
+              // Shift + Enter: Create Subtask
+              const newId = addTask(task.id, task.groupId, "New Subtask");
+              if (newId) setEditingTask(newId);
+          } else {
+              // Enter: Edit this task
+              setEditingTask(task.id);
+          }
+      }
   };
 
   const renderTaskItem = (task: Task, level: number = 0) => {
@@ -79,24 +106,28 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
 
     return (
       <div key={task.id} className={`${level > 0 ? 'ml-6' : ''} mb-2`}>
-        <div className={`
-          flex flex-col p-3 rounded-lg border transition-all
-          ${task.completed ? 'bg-slate-50 border-slate-100 opacity-70' : 'bg-white border-slate-200 hover:border-indigo-300'}
-        `}>
+        <div 
+            tabIndex={0}
+            onKeyDown={(e) => handleTaskKeyDown(e, task)}
+            className={`
+                flex flex-col p-3 rounded-lg border transition-all outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                ${task.completed ? 'bg-slate-50 border-slate-100 opacity-70' : 'bg-white border-slate-200 hover:border-indigo-300'}
+            `}
+        >
           <div className="flex items-start gap-3">
             <button 
-              onClick={() => toggleTask(task.id)}
+              onClick={(e) => { e.stopPropagation(); toggleTask(task.id); }}
               className={`mt-1 w-4 h-4 rounded border flex items-center justify-center transition-colors ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-emerald-500'}`}
             >
               {task.completed && <Check className="w-3 h-3 text-white" />}
             </button>
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0" onClick={() => !isEditing && setEditingTask(task.id)}>
               <div className="flex justify-between items-start">
                  <span className={`text-sm font-medium ${task.completed ? 'line-through text-slate-500' : 'text-slate-800'}`}>
                    {task.title}
                  </span>
-                 <div className="flex gap-1">
+                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     {!isEditing && (
                       <button onClick={() => setEditingTask(task.id)} className="text-slate-400 hover:text-indigo-600">
                         <List className="w-3 h-3" />
@@ -115,22 +146,41 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
                      {new Date(task.expectedStartTime).toLocaleDateString()}
                    </span>
                  )}
-                 {task.expectedDuration && (
+                 {task.expectedDuration ? (
                    <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
                      <Clock className="w-3 h-3" /> {task.expectedDuration}m
                    </span>
+                 ) : null}
+                 {/* Visual indicators for non-zero priorities */}
+                 {(task.importance > 0 || task.urgency > 0) && (
+                     <span className="flex items-center gap-1 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">
+                        IMP:{task.importance} URG:{task.urgency}
+                     </span>
                  )}
               </div>
             </div>
           </div>
 
           {isEditing && (
-            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs" onClick={(e) => e.stopPropagation()}>
               <div className="col-span-2">
                 <label className="block text-slate-500 mb-1">{t.title}</label>
                 <input 
                   type="text" 
                   value={task.title}
+                  autoFocus
+                  onKeyDown={(e) => {
+                      if(e.key === 'Enter' && !e.shiftKey) { 
+                          setEditingTask(null); 
+                          e.stopPropagation();
+                      }
+                      if(e.key === 'Enter' && e.shiftKey) {
+                          // Allow adding subtask from within edit mode too
+                          const newId = addTask(task.id, task.groupId, "New Subtask");
+                          if(newId) setEditingTask(newId);
+                          e.stopPropagation();
+                      }
+                  }}
                   onChange={(e) => updateTask(task.id, { title: e.target.value })}
                   className="w-full p-1 border rounded text-xs"
                 />
@@ -154,18 +204,18 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
                 />
               </div>
               <div>
-                 <label className="block text-slate-500 mb-1">{t.importance} (1-10)</label>
+                 <label className="block text-slate-500 mb-1">{t.importance} (0-10)</label>
                  <input 
-                    type="range" min="1" max="10" 
+                    type="range" min="0" max="10" 
                     value={task.importance}
                     onChange={(e) => updateTask(task.id, { importance: parseInt(e.target.value) })}
                     className="w-full accent-indigo-600"
                  />
               </div>
               <div>
-                 <label className="block text-slate-500 mb-1">{t.urgency} (1-10)</label>
+                 <label className="block text-slate-500 mb-1">{t.urgency} (0-10)</label>
                  <input 
-                    type="range" min="1" max="10" 
+                    type="range" min="0" max="10" 
                     value={task.urgency}
                     onChange={(e) => updateTask(task.id, { urgency: parseInt(e.target.value) })}
                     className="w-full accent-orange-500"
@@ -174,8 +224,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
               <div className="col-span-2 flex justify-end gap-2">
                  <button 
                   onClick={() => {
-                     setNewTaskTitle('New Subtask');
-                     addTask(task.id, task.groupId);
+                     const newId = addTask(task.id, task.groupId, "New Subtask");
+                     if (newId) setEditingTask(newId);
                   }}
                   className="px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200"
                  >
@@ -242,7 +292,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
                   </div>
                   <EisenhowerMatrix tasks={tasks} onTaskClick={(t) => setEditingTask(t.id)} />
                   {editingTask && (
-                      <div className="p-2 bg-white border rounded shadow-lg">
+                      <div className="p-2 bg-white border rounded shadow-lg absolute bottom-4 right-4 left-4 z-50">
                           <div className="flex justify-between items-center mb-2">
                              <span className="font-bold text-xs">{t.quickEdit}</span>
                              <button onClick={() => setEditingTask(null)}><X className="w-3 h-3" /></button>
@@ -250,13 +300,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ lang }) => {
                           <p className="text-xs mb-2">Editing: {tasks.find(t => t.id === editingTask)?.title}</p>
                           <div className="grid grid-cols-2 gap-2">
                              <input 
-                                type="range" min="1" max="10" 
-                                value={tasks.find(t => t.id === editingTask)?.importance || 5}
+                                type="range" min="0" max="10" 
+                                value={tasks.find(t => t.id === editingTask)?.importance || 0}
                                 onChange={(e) => updateTask(editingTask, { importance: parseInt(e.target.value) })}
                              />
                              <input 
-                                type="range" min="1" max="10" 
-                                value={tasks.find(t => t.id === editingTask)?.urgency || 5}
+                                type="range" min="0" max="10" 
+                                value={tasks.find(t => t.id === editingTask)?.urgency || 0}
                                 onChange={(e) => updateTask(editingTask, { urgency: parseInt(e.target.value) })}
                              />
                           </div>
