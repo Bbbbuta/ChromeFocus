@@ -1,0 +1,5 @@
+{
+  "name": "ChromeFocus",
+  "description": "A productivity dashboard designed as a Chrome Extension simulator. It tracks 90-minute work blocks, summarizes activity using AI, and provides gamified focus tools.",
+  "requestFramePermissions": []
+}
